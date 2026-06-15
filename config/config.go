@@ -16,14 +16,37 @@ type TwoUp struct {
 }
 
 // LabelProfile is a named sticker type. The router matches an incoming PDF's
-// page size against each profile (within tolerance) to pick 2-up settings.
+// page size against this profile (within tolerance), then composes output at
+// the physical sticker size so it lands 1:1 on the media.
+//
+//   - WidthMM/HeightMM  = the size of the INCOMING PDF page (used for matching).
+//   - LabelWidthMM/LabelHeightMM = the PHYSICAL sticker size (used to size the
+//     output cells). If 0, falls back to WidthMM/HeightMM (print at native size).
+//
 // Add new sticker types by appending entries to config.json.
 type LabelProfile struct {
 	Name        string  `json:"name"`
 	WidthMM     float64 `json:"width_mm"`
 	HeightMM    float64 `json:"height_mm"`
 	ToleranceMM float64 `json:"tolerance_mm"`
-	TwoUp       TwoUp   `json:"two_up"`
+
+	LabelWidthMM  float64 `json:"label_width_mm"`
+	LabelHeightMM float64 `json:"label_height_mm"`
+
+	TwoUp TwoUp `json:"two_up"`
+}
+
+// OutputCell returns the physical sticker size to compose each label at,
+// falling back to the incoming page size when not configured.
+func (p LabelProfile) OutputCell() (w, h float64) {
+	w, h = p.LabelWidthMM, p.LabelHeightMM
+	if w <= 0 {
+		w = p.WidthMM
+	}
+	if h <= 0 {
+		h = p.HeightMM
+	}
+	return w, h
 }
 
 // Config holds all user-editable settings, loaded from config.json.

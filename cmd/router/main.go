@@ -111,7 +111,8 @@ func routeToLabel(cfg config.Config, tmp string, ps detector.PageSize, emit emit
 	if prof := cfg.MatchProfile(ps.WidthMM, ps.HeightMM); prof != nil {
 		logger.Printf("matched profile %q", prof.Name)
 		twoUp = prof.TwoUp
-		labelW, labelH = prof.WidthMM, prof.HeightMM
+		labelW, labelH = prof.OutputCell()
+		logger.Printf("output cell (physical sticker): %.1fx%.1f mm", labelW, labelH)
 	} else {
 		logger.Printf("no profile matched; using default label settings")
 	}
