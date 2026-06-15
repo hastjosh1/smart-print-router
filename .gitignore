@@ -1,0 +1,19 @@
+# Build output
+*.exe
+smart-print-router
+/router
+/spr-tray
+/dist/
+
+# Stray Windows-path artifacts when dry-running on macOS/Linux
+/C:/
+
+# Local logs / temp PDFs
+logs/
+*.log
+*.pdf
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

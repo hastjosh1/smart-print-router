@@ -1,0 +1,26 @@
+{
+  "report_printer": "Canon LBP2900B",
+  "label_printer": "TVS LP46 Delite",
+
+  "sumatra_path": "C:/Program Files/SumatraPDF/SumatraPDF.exe",
+  "log_file": "C:/SmartPrintRouter/logs/router.log",
+
+  "label_detection": {
+    "max_width_mm": 150,
+    "max_height_mm": 200
+  },
+
+  "default_label": {
+    "two_up": { "enabled": false, "columns": 1, "gap_mm": 0 }
+  },
+
+  "label_profiles": [
+    {
+      "name": "Barcode label (2-up side-by-side)",
+      "width_mm": 39.9,
+      "height_mm": 19.8,
+      "tolerance_mm": 4,
+      "two_up": { "enabled": true, "columns": 2, "gap_mm": 2 }
+    }
+  ]
+}
