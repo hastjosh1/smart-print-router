@@ -33,6 +33,10 @@ type Config struct {
 	SumatraPath string `json:"sumatra_path"`
 	LogFile     string `json:"log_file"`
 
+	// Passed to SumatraPDF's -print-settings. "fit" scales each page to the
+	// printer's label size (like Acrobat's "Fit") — needed for thermal labels.
+	SumatraPrintSettings string `json:"sumatra_print_settings"`
+
 	// Page-size cutoff for the label-vs-report decision (orientation-independent).
 	LabelDetection struct {
 		MaxWidthMM  float64 `json:"max_width_mm"`
@@ -56,6 +60,7 @@ func defaults() Config {
 	c.DefaultLabel.TwoUp = TwoUp{Enabled: false, Columns: 1, GapMM: 0}
 	c.SumatraPath = `C:/Program Files/SumatraPDF/SumatraPDF.exe`
 	c.LogFile = `C:/SmartPrintRouter/logs/router.log`
+	c.SumatraPrintSettings = "fit"
 	return c
 }
 

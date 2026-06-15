@@ -37,7 +37,7 @@ func main() {
 
 	// emit is the terminal action: print silently, or (dry-run) copy to a file.
 	emit := func(printerName, pdfPath string) error {
-		return printer.SilentPrint(cfg.SumatraPath, printerName, pdfPath)
+		return printer.SilentPrint(cfg.SumatraPath, printerName, pdfPath, cfg.SumatraPrintSettings)
 	}
 	if *dryRun {
 		out := *outFile
