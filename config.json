@@ -21,8 +21,8 @@
       "width_mm": 39.9,
       "height_mm": 19.8,
       "tolerance_mm": 4,
-      "label_width_mm": 50,
-      "label_height_mm": 25,
+      "label_width_mm": 50.8,
+      "label_height_mm": 25.4,
       "two_up": { "enabled": true, "columns": 2, "gap_mm": 2 }
     }
   ]
