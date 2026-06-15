@@ -141,38 +141,58 @@ func isSpace(b byte) bool {
 }
 
 // ResolveGS finds the Ghostscript executable: the configured path first, then
-// standard install locations.
+// the system PATH, then standard install locations.
 func ResolveGS(configured string) (string, error) {
 	var candidates []string
-	if configured != "" {
-		candidates = append(candidates, configured)
+	add := func(s string) {
+		if s != "" {
+			candidates = append(candidates, s)
+		}
 	}
+
+	add(configured)
+
 	if runtime.GOOS == "windows" {
-		for _, base := range []string{`C:\Program Files\gs`, `C:\Program Files (x86)\gs`} {
+		// On PATH (covers installs that registered themselves).
+		for _, name := range []string{"gswin64c.exe", "gswin32c.exe", "gswin64c", "gswin32c", "gs.exe"} {
+			if p, err := exec.LookPath(name); err == nil {
+				add(p)
+			}
+		}
+		// Standard install folders: both "gs" and "Ghostscript" dir names, both
+		// "gsX.YY" and any subfolder layouts, 64- and 32-bit Program Files.
+		bases := []string{
+			`C:\Program Files\gs`, `C:\Program Files (x86)\gs`,
+			`C:\Program Files\Ghostscript`, `C:\Program Files (x86)\Ghostscript`,
+		}
+		for _, base := range bases {
 			for _, exe := range []string{"gswin64c.exe", "gswin32c.exe"} {
-				m, _ := filepath.Glob(filepath.Join(base, "gs*", "bin", exe))
-				sort.Sort(sort.Reverse(sort.StringSlice(m))) // newest version first
-				candidates = append(candidates, m...)
+				for _, pat := range []string{
+					filepath.Join(base, "gs*", "bin", exe),
+					filepath.Join(base, "*", "bin", exe),
+					filepath.Join(base, "bin", exe),
+				} {
+					m, _ := filepath.Glob(pat)
+					sort.Sort(sort.Reverse(sort.StringSlice(m))) // newest version first
+					candidates = append(candidates, m...)
+				}
 			}
 		}
 	} else {
-		candidates = append(candidates, "gs")
+		if p, err := exec.LookPath("gs"); err == nil {
+			add(p)
+		}
 	}
 
 	for _, c := range candidates {
-		if c == "gs" {
-			if _, err := exec.LookPath(c); err == nil {
-				return c, nil
-			}
-			continue
-		}
 		if _, err := os.Stat(c); err == nil {
 			return c, nil
 		}
 	}
 	return "", fmt.Errorf(
-		"Ghostscript not found (looked in: %v). Install it from "+
-			"https://www.ghostscript.com/releases/gsdnld.html or set label_raw.gs_path in config.json",
+		"Ghostscript not found (looked in: %v). Install the 64-bit build from "+
+			"https://www.ghostscript.com/releases/gsdnld.html and re-run, or set "+
+			"label_raw.gs_path in config.json to the full path of gswin64c.exe",
 		candidates,
 	)
 }
