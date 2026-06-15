@@ -57,9 +57,15 @@ type Config struct {
 	SumatraPath string `json:"sumatra_path"`
 	LogFile     string `json:"log_file"`
 
-	// Passed to SumatraPDF's -print-settings. "fit" scales each page to the
-	// printer's label size (like Acrobat's "Fit") — needed for thermal labels.
-	SumatraPrintSettings string `json:"sumatra_print_settings"`
+	// Passed to SumatraPDF's -print-settings, per route.
+	//   - Labels: "noscale" prints exactly 1:1 with no auto-rotate (needed once
+	//     the composed sheet matches the physical label, e.g. 4x1 inch).
+	//   - Reports: "fit" scales the page to the paper (good for A4/Letter).
+	// LegacyPrintSettings is the old single setting, used as a fallback when a
+	// per-route value is empty.
+	LabelPrintSettings  string `json:"label_print_settings"`
+	ReportPrintSettings string `json:"report_print_settings"`
+	LegacyPrintSettings string `json:"sumatra_print_settings"`
 
 	// Page-size cutoff for the label-vs-report decision (orientation-independent).
 	LabelDetection struct {
@@ -84,7 +90,8 @@ func defaults() Config {
 	c.DefaultLabel.TwoUp = TwoUp{Enabled: false, Columns: 1, GapMM: 0}
 	c.SumatraPath = `C:/Program Files/SumatraPDF/SumatraPDF.exe`
 	c.LogFile = `C:/SmartPrintRouter/logs/router.log`
-	c.SumatraPrintSettings = "fit"
+	c.LabelPrintSettings = "noscale"
+	c.ReportPrintSettings = "fit"
 	return c
 }
 
@@ -106,6 +113,26 @@ func Load(path string) (Config, error) {
 		return cfg, err
 	}
 	return cfg, nil
+}
+
+// LabelPrint returns the SumatraPDF print settings for labels (per-route value,
+// then the legacy single setting, then "noscale").
+func (c Config) LabelPrint() string {
+	return firstNonEmpty(c.LabelPrintSettings, c.LegacyPrintSettings, "noscale")
+}
+
+// ReportPrint returns the SumatraPDF print settings for reports.
+func (c Config) ReportPrint() string {
+	return firstNonEmpty(c.ReportPrintSettings, c.LegacyPrintSettings, "fit")
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // CheckFileExists reports an error if no config file exists at path. Used to

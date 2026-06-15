@@ -4,7 +4,8 @@
 
   "sumatra_path": "C:/Program Files/SumatraPDF/SumatraPDF.exe",
   "log_file": "C:/SmartPrintRouter/logs/router.log",
-  "sumatra_print_settings": "fit",
+  "label_print_settings": "noscale",
+  "report_print_settings": "fit",
 
   "label_detection": {
     "max_width_mm": 150,

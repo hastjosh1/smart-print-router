@@ -40,23 +40,23 @@ func main() {
 	logger := setupLogger(cfg.LogFile)
 	logger.Printf("---- new job (name=%q, dryrun=%v) ----", *jobName, *dryRun)
 	logger.Printf("config: %s", effCfgPath)
-	logger.Printf("loaded: label=%q report=%q sumatra=%q print_settings=%q",
-		cfg.LabelPrinter, cfg.ReportPrinter, cfg.SumatraPath, cfg.SumatraPrintSettings)
+	logger.Printf("loaded: label=%q report=%q sumatra=%q", cfg.LabelPrinter, cfg.ReportPrinter, cfg.SumatraPath)
+	logger.Printf("print settings: label=%q report=%q", cfg.LabelPrint(), cfg.ReportPrint())
 	if cfgErr := config.CheckFileExists(effCfgPath); cfgErr != nil {
 		logger.Printf("WARNING: %v (using built-in defaults — your edits are NOT being read)", cfgErr)
 	}
 
 	// emit is the terminal action: print silently, or (dry-run) copy to a file.
-	emit := func(printerName, pdfPath string) error {
-		return printer.SilentPrint(cfg.SumatraPath, printerName, pdfPath, cfg.SumatraPrintSettings)
+	emit := func(printerName, pdfPath, printSettings string) error {
+		return printer.SilentPrint(cfg.SumatraPath, printerName, pdfPath, printSettings)
 	}
 	if *dryRun {
 		out := *outFile
 		if out == "" {
 			out = strings.TrimSuffix(*inFile, ".pdf") + ".routed.pdf"
 		}
-		emit = func(printerName, pdfPath string) error {
-			logger.Printf("[dryrun] would print to %q; writing result to %q", printerName, out)
+		emit = func(printerName, pdfPath, printSettings string) error {
+			logger.Printf("[dryrun] would print to %q (settings %q); writing result to %q", printerName, printSettings, out)
 			return copyFile(pdfPath, out)
 		}
 	}
@@ -69,7 +69,7 @@ func main() {
 }
 
 // emitFunc performs the final action on a ready-to-print PDF.
-type emitFunc func(printerName, pdfPath string) error
+type emitFunc func(printerName, pdfPath, printSettings string) error
 
 func run(cfg config.Config, inFile, jobName string, emit emitFunc, logger *log.Logger) error {
 	pdfData, err := readInput(inFile)
@@ -101,7 +101,7 @@ func run(cfg config.Config, inFile, jobName string, emit emitFunc, logger *log.L
 		return routeToLabel(cfg, tmp, ps, emit, logger)
 	}
 	logger.Printf("routing to REPORT printer %q", cfg.ReportPrinter)
-	return emit(cfg.ReportPrinter, tmp)
+	return emit(cfg.ReportPrinter, tmp, cfg.ReportPrint())
 }
 
 func routeToLabel(cfg config.Config, tmp string, ps detector.PageSize, emit emitFunc, logger *log.Logger) error {
@@ -129,7 +129,7 @@ func routeToLabel(cfg config.Config, tmp string, ps detector.PageSize, emit emit
 	}
 
 	logger.Printf("routing to LABEL printer %q", cfg.LabelPrinter)
-	return emit(cfg.LabelPrinter, toPrint)
+	return emit(cfg.LabelPrinter, toPrint, cfg.LabelPrint())
 }
 
 // copyFile copies src to dst (used by -dryrun to save the result).
