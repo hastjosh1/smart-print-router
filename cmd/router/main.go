@@ -32,8 +32,19 @@ func main() {
 		fmt.Fprintln(os.Stderr, "config warning:", err)
 	}
 
+	effCfgPath := *configPath
+	if effCfgPath == "" {
+		effCfgPath = config.DefaultPath()
+	}
+
 	logger := setupLogger(cfg.LogFile)
 	logger.Printf("---- new job (name=%q, dryrun=%v) ----", *jobName, *dryRun)
+	logger.Printf("config: %s", effCfgPath)
+	logger.Printf("loaded: label=%q report=%q sumatra=%q print_settings=%q",
+		cfg.LabelPrinter, cfg.ReportPrinter, cfg.SumatraPath, cfg.SumatraPrintSettings)
+	if cfgErr := config.CheckFileExists(effCfgPath); cfgErr != nil {
+		logger.Printf("WARNING: %v (using built-in defaults — your edits are NOT being read)", cfgErr)
+	}
 
 	// emit is the terminal action: print silently, or (dry-run) copy to a file.
 	emit := func(printerName, pdfPath string) error {

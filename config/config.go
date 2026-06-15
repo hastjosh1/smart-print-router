@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -82,6 +83,15 @@ func Load(path string) (Config, error) {
 		return cfg, err
 	}
 	return cfg, nil
+}
+
+// CheckFileExists reports an error if no config file exists at path. Used to
+// warn (in the log) when an edited config.json isn't where the program looks.
+func CheckFileExists(path string) error {
+	if _, err := os.Stat(path); err != nil {
+		return fmt.Errorf("config file not found at %q", path)
+	}
+	return nil
 }
 
 // DefaultPath returns config.json next to the executable.
