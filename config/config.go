@@ -79,6 +79,21 @@ type Config struct {
 	} `json:"default_label"`
 
 	LabelProfiles []LabelProfile `json:"label_profiles"`
+
+	// LabelRaw prints labels via native TSPL sent raw to the printer (bypassing
+	// SumatraPDF + the Windows driver), which avoids any scaling/rotation. When
+	// enabled, the composed 2-up PDF is rasterized with Ghostscript and wrapped
+	// in TSPL. Requires Ghostscript installed.
+	LabelRaw struct {
+		Enabled   bool    `json:"enabled"`
+		GSPath    string  `json:"gs_path"`   // Ghostscript exe; auto-detected if empty
+		DPI       int     `json:"dpi"`       // printer resolution (LP46 = 203)
+		GapMM     float64 `json:"gap_mm"`    // vertical gap between label rows
+		Direction int     `json:"direction"` // TSPL DIRECTION 0/1 (flip if upside down)
+		Density   int     `json:"density"`   // TSPL DENSITY 0-15 (darkness)
+		Speed     int     `json:"speed"`     // TSPL SPEED (0 = printer default)
+		Copies    int     `json:"copies"`    // sheets per job
+	} `json:"label_raw"`
 }
 
 func defaults() Config {
@@ -92,6 +107,13 @@ func defaults() Config {
 	c.LogFile = `C:/SmartPrintRouter/logs/router.log`
 	c.LabelPrintSettings = "noscale"
 	c.ReportPrintSettings = "fit"
+	c.LabelRaw.Enabled = true
+	c.LabelRaw.DPI = 203
+	c.LabelRaw.GapMM = 2
+	c.LabelRaw.Direction = 1
+	c.LabelRaw.Density = 8
+	c.LabelRaw.Speed = 4
+	c.LabelRaw.Copies = 1
 	return c
 }
 

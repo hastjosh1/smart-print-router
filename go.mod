@@ -4,6 +4,7 @@ go 1.22
 
 require (
 	fyne.io/systray v1.11.0
+	github.com/alexbrainman/printer v0.0.0-20200912035444-f40f26f0bdeb
 	github.com/pdfcpu/pdfcpu v0.8.1
 )
 

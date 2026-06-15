@@ -38,7 +38,24 @@ no Redmon**.
 
 ---
 
-## Stage 2 — does it print to the right real printer? (needs SumatraPDF)
+## Labels print via native TSPL (needs Ghostscript)
+
+By default the router prints **labels** by rendering them and sending the printer
+its native **TSPL** commands directly — this bypasses the Windows driver, so the
+label cannot be rotated or rescaled (which is what caused the earlier sideways /
+shrunk prints). This needs **Ghostscript** installed:
+https://www.ghostscript.com/releases/gsdnld.html (64-bit). The router auto-finds
+it under `C:\Program Files\gs\...`.
+
+Reports (A4 → Canon) still print normally via SumatraPDF. To revert labels to the
+old driver-based printing, set `label_raw.enabled` to `false` in `config.json`.
+
+Tuning lives in `config.json` under `label_raw`: `gap_mm` (gap between rows),
+`direction` (flip 0/1 if upside down), `density` (darkness 0-15), `copies`.
+
+---
+
+## Stage 2 — does it print to the right real printer? (needs SumatraPDF + Ghostscript)
 
 This proves silent printing to your actual Canon + TVS, **still without Redmon**.
 

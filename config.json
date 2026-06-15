@@ -26,5 +26,16 @@
       "label_height_mm": 25.4,
       "two_up": { "enabled": true, "columns": 2, "gap_mm": 2 }
     }
-  ]
+  ],
+
+  "label_raw": {
+    "enabled": true,
+    "gs_path": "",
+    "dpi": 203,
+    "gap_mm": 2,
+    "direction": 1,
+    "density": 8,
+    "speed": 4,
+    "copies": 1
+  }
 }

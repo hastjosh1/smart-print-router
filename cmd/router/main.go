@@ -17,6 +17,7 @@ import (
 	"github.com/yourorg/smart-print-router/config"
 	"github.com/yourorg/smart-print-router/detector"
 	"github.com/yourorg/smart-print-router/printer"
+	"github.com/yourorg/smart-print-router/rawlabel"
 )
 
 func main() {
@@ -46,22 +47,22 @@ func main() {
 		logger.Printf("WARNING: %v (using built-in defaults — your edits are NOT being read)", cfgErr)
 	}
 
-	// emit is the terminal action: print silently, or (dry-run) copy to a file.
-	emit := func(printerName, pdfPath, printSettings string) error {
-		return printer.SilentPrint(cfg.SumatraPath, printerName, pdfPath, printSettings)
-	}
-	if *dryRun {
-		out := *outFile
-		if out == "" {
-			out = strings.TrimSuffix(*inFile, ".pdf") + ".routed.pdf"
-		}
-		emit = func(printerName, pdfPath, printSettings string) error {
-			logger.Printf("[dryrun] would print to %q (settings %q); writing result to %q", printerName, printSettings, out)
-			return copyFile(pdfPath, out)
-		}
+	outPath := *outFile
+	if outPath == "" {
+		outPath = strings.TrimSuffix(*inFile, ".pdf") + ".routed.pdf"
 	}
 
-	if err := run(cfg, *inFile, *jobName, emit, logger); err != nil {
+	// emit is the terminal action for the SumatraPDF path: print, or (dry-run)
+	// copy the result to a file.
+	emit := func(printerName, pdfPath, printSettings string) error {
+		if *dryRun {
+			logger.Printf("[dryrun] would print to %q (settings %q); writing result to %q", printerName, printSettings, outPath)
+			return copyFile(pdfPath, outPath)
+		}
+		return printer.SilentPrint(cfg.SumatraPath, printerName, pdfPath, printSettings)
+	}
+
+	if err := run(cfg, *inFile, *jobName, *dryRun, outPath, emit, logger); err != nil {
 		logger.Printf("ERROR: %v", err)
 		os.Exit(1)
 	}
@@ -71,7 +72,7 @@ func main() {
 // emitFunc performs the final action on a ready-to-print PDF.
 type emitFunc func(printerName, pdfPath, printSettings string) error
 
-func run(cfg config.Config, inFile, jobName string, emit emitFunc, logger *log.Logger) error {
+func run(cfg config.Config, inFile, jobName string, dryRun bool, outPath string, emit emitFunc, logger *log.Logger) error {
 	pdfData, err := readInput(inFile)
 	if err != nil {
 		return fmt.Errorf("read input: %w", err)
@@ -98,13 +99,13 @@ func run(cfg config.Config, inFile, jobName string, emit emitFunc, logger *log.L
 	}
 
 	if isLabel {
-		return routeToLabel(cfg, tmp, ps, emit, logger)
+		return routeToLabel(cfg, tmp, ps, dryRun, outPath, emit, logger)
 	}
 	logger.Printf("routing to REPORT printer %q", cfg.ReportPrinter)
 	return emit(cfg.ReportPrinter, tmp, cfg.ReportPrint())
 }
 
-func routeToLabel(cfg config.Config, tmp string, ps detector.PageSize, emit emitFunc, logger *log.Logger) error {
+func routeToLabel(cfg config.Config, tmp string, ps detector.PageSize, dryRun bool, outPath string, emit emitFunc, logger *log.Logger) error {
 	// Pick 2-up settings + label dimensions from the matched profile, if any.
 	twoUp := cfg.DefaultLabel.TwoUp
 	labelW, labelH := ps.WidthMM, ps.HeightMM
@@ -128,8 +129,52 @@ func routeToLabel(cfg config.Config, tmp string, ps detector.PageSize, emit emit
 		logger.Printf("composed %d-up label sheet (gap %.1f mm)", twoUp.Columns, twoUp.GapMM)
 	}
 
-	logger.Printf("routing to LABEL printer %q", cfg.LabelPrinter)
+	// Preferred path: native TSPL sent raw to the printer (no driver scaling/rotation).
+	if cfg.LabelRaw.Enabled {
+		return printLabelRaw(cfg, toPrint, dryRun, outPath, logger)
+	}
+
+	logger.Printf("routing to LABEL printer %q via SumatraPDF", cfg.LabelPrinter)
 	return emit(cfg.LabelPrinter, toPrint, cfg.LabelPrint())
+}
+
+// printLabelRaw rasterizes the composed label PDF and prints it as native TSPL.
+func printLabelRaw(cfg config.Config, pdfPath string, dryRun bool, outPath string, logger *log.Logger) error {
+	ps, err := detector.Detect(pdfPath)
+	if err != nil {
+		return fmt.Errorf("measure composed label: %w", err)
+	}
+	dpi := cfg.LabelRaw.DPI
+	if dpi <= 0 {
+		dpi = 203
+	}
+	widthPt := ps.WidthMM / 25.4 * 72
+	heightPt := ps.HeightMM / 25.4 * 72
+
+	img, err := rawlabel.Render(cfg.LabelRaw.GSPath, pdfPath, dpi, widthPt, heightPt)
+	if err != nil {
+		return err
+	}
+	logger.Printf("rasterized label: %dx%d dots @ %d dpi (%.1fx%.1f mm)", img.Width, img.Height, dpi, ps.WidthMM, ps.HeightMM)
+
+	data := rawlabel.BuildTSPL(img, rawlabel.Options{
+		WidthMM:   ps.WidthMM,
+		HeightMM:  ps.HeightMM,
+		GapMM:     cfg.LabelRaw.GapMM,
+		Direction: cfg.LabelRaw.Direction,
+		Density:   cfg.LabelRaw.Density,
+		Speed:     cfg.LabelRaw.Speed,
+		Copies:    cfg.LabelRaw.Copies,
+	})
+
+	if dryRun {
+		prn := strings.TrimSuffix(outPath, ".pdf") + ".prn"
+		logger.Printf("[dryrun] writing %d bytes of TSPL to %q", len(data), prn)
+		return os.WriteFile(prn, data, 0o644)
+	}
+
+	logger.Printf("sending %d bytes of TSPL to LABEL printer %q", len(data), cfg.LabelPrinter)
+	return rawlabel.PrintRaw(cfg.LabelPrinter, data)
 }
 
 // copyFile copies src to dst (used by -dryrun to save the result).
