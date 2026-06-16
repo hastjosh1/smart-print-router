@@ -1,5 +1,35 @@
 # Smart Print Router — Project Context
 
+> ## 🔧 CURRENT STATUS / HANDOFF (read this first)
+>
+> Working on the real hardware: Windows 10, **Canon LBP2900B** (reports),
+> **SNBC TVSE LP46 Dlite BPLE** (labels, TSPL2). Browser app (react-pdf) emits a
+> 2-page barcode PDF, each page ~39.9×19.8 mm; physical sticker is **4″×1″
+> 2-across** (two 50.8×25.4 mm labels per row, with a gap).
+>
+> **What works:** detection, 2-up composition at 50.8×25.4 cells → 101.6×25.4 mm
+> sheet (verified), config loading, report routing.
+>
+> **The label-printing journey:** SumatraPDF + the Windows driver kept
+> **rotating/shrinking** the label no matter the orientation/scale settings. So
+> labels now print via **native TSPL** (`rawlabel` package): Ghostscript
+> rasterizes the composed PDF to 203-DPI mono, packed into a TSPL `BITMAP`, sent
+> RAW to the printer (bypasses the driver → no rotation/scaling). Verified by
+> decoding the TSPL back to an image = pixel-perfect.
+>
+> **What's left (calibrate on the real printer):**
+> 1. Ensure Ghostscript is found (`label_raw.gs_path` in config.json, or on PATH).
+> 2. Test-print and check: upside down? → flip `label_raw.direction` (0/1).
+>    Too light/dark? → `label_raw.density` (0-15). Row spacing? → `label_raw.gap_mm`.
+> 3. Confirm the barcode scans and centering is right; nudge `label_width_mm`/`gap_mm`.
+> 4. Then Stage 3: install the virtual printer (Redmon) so the browser app prints to it.
+>
+> **How to test:** `router.exe -in <pdf> -config config.json -dryrun -out out.pdf`
+> writes the composed PDF and (for labels) a `.prn` of the TSPL to inspect.
+> Live: drag a PDF onto `2-test-print.bat`. Log: `C:\SmartPrintRouter\logs\router.log`.
+> Build the Windows zip with `./build-dist.sh`; releases are published on GitHub.
+> Do NOT commit the sample patient PDF (repo is public).
+
 A **virtual Windows printer** that auto-routes PDFs from a browser app:
 - **Labels/barcodes** (small page) → label printer, composed **2-up**
 - **Reports** (A4/Letter) → report printer
